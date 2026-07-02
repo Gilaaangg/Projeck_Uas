@@ -2,6 +2,7 @@ import { useContext, useState, useRef } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { CartContext } from '../context/CartContext'
 import { AuthContext } from '../context/AuthContext'
+import PaymentGateway from '../components/PaymentGateway'
 
 /* ─── Helper ─── */
 const formatRp = (n) => 'Rp ' + Number(n).toLocaleString('id-ID')
@@ -241,6 +242,7 @@ function Checkout() {
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [receipt, setReceipt] = useState(null)   // null = belum bayar, obj = tampilkan struk
+  const [showPaymentGateway, setShowPaymentGateway] = useState(false)
 
   if (!user) {
     return <Navigate to="/login" state={{ from: '/checkout' }} replace />
@@ -250,11 +252,17 @@ function Checkout() {
   const SERVICE_FEE = 2000
   const grandTotal = totalPrice + DELIVERY_FEE + SERVICE_FEE
 
-  const handlePayment = async () => {
+  // Buka modal payment gateway simulasi
+  const handlePayment = () => {
     if (cartItems.length === 0 || !address.trim()) return
+    setShowPaymentGateway(true)
+  }
+
+  // Callback setelah simulasi payment gateway selesai
+  const handlePaymentGatewayComplete = async () => {
+    setShowPaymentGateway(false)
     setSubmitting(true)
     try {
-      // Simpan data pesanan sebelum cart dikosongkan
       const orderData = {
         orderId: generateOrderId(),
         date: new Date().toLocaleString('id-ID', {
@@ -273,7 +281,7 @@ function Checkout() {
       }
 
       await clearCart()
-      setReceipt(orderData)   // tampilkan struk modal
+      setReceipt(orderData)
     } catch {
       alert('Gagal memproses pembayaran. Coba lagi.')
     } finally {
@@ -298,6 +306,16 @@ function Checkout() {
   return (
     <>
       {receipt && <ReceiptModal order={receipt} onClose={handleCloseReceipt} />}
+
+      {showPaymentGateway && (
+        <PaymentGateway
+          paymentMethod={payment}
+          total={grandTotal}
+          address={address}
+          onComplete={handlePaymentGatewayComplete}
+          onCancel={() => setShowPaymentGateway(false)}
+        />
+      )}
 
       <div style={{ fontFamily: 'Inter, system-ui, sans-serif', maxWidth: 760, margin: '0 auto' }}>
         <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: '#1f2937', marginBottom: 24 }}>
